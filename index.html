@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Recon Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=IBM+Plex+Mono&family=Newsreader:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="theme-day">
+
+  <!-- Module 1: Command Center Header & Campaign Bar -->
+  <header class="command-center-header">
+    <div class="top-ledger-bar">
+      <div class="title-section">
+        <h1>THE RECON LEDGER</h1>
+        <p class="subtitle">PYQ signal → mechanism → failure diagnosis → blind-spot coverage → transformed practice.</p>
+      </div>
+      <div class="controls-section">
+        <select id="campaign-phase-selector" class="phase-selector"></select>
+        <button id="theme-toggle" class="btn-icon" title="Toggle Day/Night">🌗</button>
+        <button id="smart-merge-btn" class="btn" title="Smart Merge Import/Export">⎘ Merge Data</button>
+        <button id="github-sync-btn" class="btn" title="GitHub Sync Status">🐙 <span id="sync-status">Not Synced</span></button>
+      </div>
+    </div>
+
+    <!-- Exam Countdown Strip -->
+    <div id="exam-countdown-strip" class="exam-countdown-strip">
+      <!-- Populated by JS -->
+    </div>
+  </header>
+
+  <main class="main-layout">
+
+    <!-- Module 2: Today's Desk -->
+    <section class="todays-desk-section">
+      <div class="section-header">
+        <h2>Today's Desk</h2>
+        <span class="desk-subtitle">Dynamic Priority Queue</span>
+      </div>
+      <div id="todays-desk-container" class="desk-container">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- Module 3: The Franklin Grid -->
+    <aside class="franklin-grid-section">
+      <div class="section-header">
+        <h2>Franklin Grid</h2>
+        <button id="edit-habits-btn" class="btn-text">+ Edit Habits</button>
+      </div>
+      <div id="franklin-matrix-container" class="matrix-container">
+        <!-- Populated by JS -->
+      </div>
+      <div class="heatmap-section">
+        <h3>12-Week Consistency</h3>
+        <div id="heatmap-container" class="heatmap-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Module 4: The Master Syllabus Ledger -->
+  <section class="master-syllabus-section">
+    <div class="ledger-controls">
+      <h2>Master Syllabus Ledger</h2>
+      <div class="filters">
+        <select id="filter-exam"><option value="All">All Exams</option></select>
+        <select id="filter-layer">
+          <option value="All">All Tiers</option>
+          <option value="Layer A (Deep Mastery)">Layer A</option>
+          <option value="Layer B (Strong App)">Layer B</option>
+          <option value="Layer C (Compression)">Layer C</option>
+          <option value="Layer D (Maintenance)">Layer D</option>
+        </select>
+        <select id="filter-status">
+          <option value="All">All Statuses</option>
+          <option value="In Progress">In Progress</option>
+          <option value="48h Repair">48h Repair</option>
+          <option value="Cooldown">Cooldown</option>
+          <option value="Mastered">Mastered</option>
+        </select>
+        <input type="text" id="search-topic" placeholder="Search topics...">
+      </div>
+    </div>
+
+    <div class="quick-add-bar">
+      <input type="text" id="add-subject" placeholder="Subject">
+      <input type="text" id="add-topic" placeholder="Topic name">
+      <select id="add-priority">
+        <option value="Layer A (Deep Mastery)">Layer A</option>
+        <option value="Layer B (Strong App)">Layer B</option>
+        <option value="Layer C (Compression)">Layer C</option>
+        <option value="Layer D (Maintenance)">Layer D</option>
+      </select>
+      <!-- tags to be added via UI modal or multiple select -->
+      <button id="btn-quick-add" class="btn-primary">Add Topic</button>
+    </div>
+
+    <div class="table-container">
+      <table id="master-ledger-table">
+        <thead>
+          <tr>
+            <th>Pin</th>
+            <th>Subject & Topic</th>
+            <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th>
+            <th>Mastery</th>
+            <th>Dossier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Module 5: Slide-Out Topic Dossier Drawer -->
+  <div id="dossier-drawer" class="drawer-overlay hidden">
+    <div class="drawer-content">
+      <div class="drawer-header">
+        <h2 id="dossier-title">Topic Dossier</h2>
+        <button id="close-dossier" class="btn-icon">✕</button>
+      </div>
+      <div class="drawer-body" id="dossier-body">
+        <!-- Metadata Editor, 6-Stem Test, Failure Ledger -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart Merge Modal -->
+  <div id="smart-merge-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Smart Merge Data</h2>
+        <button id="close-merge-modal" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="merge-data-input" placeholder="Paste CSV/JSON here..." rows="10"></textarea>
+        <div class="modal-actions">
+          <button id="btn-import-merge" class="btn-primary">Merge Import</button>
+          <button id="btn-export-csv" class="btn">Export CSV</button>
+          <button id="btn-export-json" class="btn">Export JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GitHub Sync Modal -->
+  <div id="github-sync-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>GitHub Sync Setup</h2>
+        <button id="close-sync-modal" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>PAT: <input type="password" id="gh-pat" placeholder="ghp_..."></label>
+        <label>Repo: <input type="text" id="gh-repo" placeholder="owner/repo"></label>
+        <label>Branch: <input type="text" id="gh-branch" value="main"></label>
+        <label>File Path: <input type="text" id="gh-path" value="data/recon-ledger-state.json"></label>
+        <label><input type="checkbox" id="gh-auto-sync"> Auto-Sync on Check</label>
+        <div class="modal-actions">
+          <button id="btn-gh-pull" class="btn-primary">Pull from GitHub</button>
+          <button id="btn-gh-push" class="btn-primary">Push to GitHub</button>
+          <button id="btn-gh-save" class="btn">Save Config</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/seed-data.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
