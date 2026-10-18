@@ -367,6 +367,27 @@ table#master-ledger-table th {
   width: 500px;
   max-width: 90%;
 }
+
+.sync-tabs .btn-text.active {
+  color: var(--accent-primary);
+  border-bottom: 2px solid var(--accent-primary);
+  border-radius: 0;
+}
+.sync-pane.hidden {
+  display: none;
+}
+#sync-status {
+  transition: color 0.3s ease;
+}
+#sync-status.online {
+  color: var(--accent-primary); /* Racing Green */
+}
+#sync-status.syncing {
+  color: var(--accent-secondary); /* Antique Brass */
+}
+#sync-status.offline {
+  color: var(--text-secondary); /* Muted Graphite */
+}
 .drawer-header, .modal-header {
   display: flex;
   justify-content: space-between;

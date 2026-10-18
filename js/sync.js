@@ -123,157 +123,356 @@ function downloadFile(content, filename, contentType) {
   a.click();
 }
 
-// -- MODULE 5B: GitHub Sync Logic --
+// -- MODULE 5B: Cloud Sync & Timestamp Merge Engine --
 
-function setupGitHubSyncEvents() {
+function setupCloudSyncEvents() {
   const modal = document.getElementById('github-sync-modal');
   const btnOpen = document.getElementById('github-sync-btn');
   const btnClose = document.getElementById('close-sync-modal');
-  const btnSaveConfig = document.getElementById('btn-gh-save');
-  const btnPull = document.getElementById('btn-gh-pull');
-  const btnPush = document.getElementById('btn-gh-push');
 
-  // Load saved config
-  const config = JSON.parse(localStorage.getItem('ghSyncConfig') || '{}');
-  if (config.pat) document.getElementById('gh-pat').value = config.pat;
-  if (config.repo) document.getElementById('gh-repo').value = config.repo;
-  if (config.branch) document.getElementById('gh-branch').value = config.branch;
-  if (config.path) document.getElementById('gh-path').value = config.path;
-  if (config.autoSync) document.getElementById('gh-auto-sync').checked = true;
+  // Tabs
+  const tabSheets = document.getElementById('tab-sheets');
+  const tabGist = document.getElementById('tab-gist');
+  const paneSheets = document.getElementById('pane-sheets');
+  const paneGist = document.getElementById('pane-gist');
 
-  if (btnOpen) btnOpen.addEventListener('click', () => modal.classList.remove('hidden'));
+  // Load config
+  const config = JSON.parse(localStorage.getItem('cloudSyncConfig') || '{"provider": "none"}');
+
+  if (config.gsUrl) document.getElementById('gs-url').value = config.gsUrl;
+  if (config.gsPin) document.getElementById('gs-pin').value = config.gsPin;
+  if (config.ghPat) document.getElementById('gh-pat').value = config.ghPat;
+  if (config.ghGistId) document.getElementById('gh-gist-id').value = config.ghGistId;
+
+  if (config.provider === 'gist') {
+    tabGist.click();
+    paneSheets.classList.add('hidden');
+    paneGist.classList.remove('hidden');
+    tabGist.classList.add('active');
+    tabSheets.classList.remove('active');
+  }
+
+  if (btnOpen) btnOpen.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    renderPairingSection();
+  });
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.add('hidden'));
 
-  if (btnSaveConfig) {
-    btnSaveConfig.addEventListener('click', () => {
-      const newConfig = {
-        pat: document.getElementById('gh-pat').value.trim(),
-        repo: document.getElementById('gh-repo').value.trim(),
-        branch: document.getElementById('gh-branch').value.trim() || 'main',
-        path: document.getElementById('gh-path').value.trim() || 'data/recon-ledger-state.json',
-        autoSync: document.getElementById('gh-auto-sync').checked
-      };
-      localStorage.setItem('ghSyncConfig', JSON.stringify(newConfig));
-      alert('GitHub Sync Configuration Saved');
-    });
-  }
+  // Tab switching
+  tabSheets.addEventListener('click', () => {
+    tabSheets.classList.add('active');
+    tabGist.classList.remove('active');
+    paneSheets.classList.remove('hidden');
+    paneGist.classList.add('hidden');
+  });
+  tabGist.addEventListener('click', () => {
+    tabGist.classList.add('active');
+    tabSheets.classList.remove('active');
+    paneGist.classList.remove('hidden');
+    paneSheets.classList.add('hidden');
+  });
 
-  if (btnPull) btnPull.addEventListener('click', pullFromGitHub);
-  if (btnPush) btnPush.addEventListener('click', () => pushToGitHub(false));
-}
+  // Save Config Option A (Sheets)
+  document.getElementById('btn-gs-save').addEventListener('click', () => {
+    const newConfig = {
+      provider: 'sheets',
+      gsUrl: document.getElementById('gs-url').value.trim(),
+      gsPin: document.getElementById('gs-pin').value.trim()
+    };
+    if (!newConfig.gsUrl) return alert("Web App URL is required.");
+    localStorage.setItem('cloudSyncConfig', JSON.stringify(newConfig));
+    alert('Google Sheets Config Saved!');
+    renderPairingSection();
+    triggerPullSync();
+  });
 
-async function getGitHubFile(config) {
-  const url = `https://api.github.com/repos/${config.repo}/contents/${config.path}?ref=${config.branch}`;
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `token ${config.pat}`,
-      'Accept': 'application/vnd.github.v3+json'
+  // Save Config Option B (Gist)
+  document.getElementById('btn-gh-save').addEventListener('click', () => {
+    const newConfig = {
+      provider: 'gist',
+      ghPat: document.getElementById('gh-pat').value.trim(),
+      ghGistId: document.getElementById('gh-gist-id').value.trim()
+    };
+    if (!newConfig.ghPat || !newConfig.ghGistId) return alert("PAT and Gist ID required.");
+    localStorage.setItem('cloudSyncConfig', JSON.stringify(newConfig));
+    alert('GitHub Gist Config Saved!');
+    renderPairingSection();
+    triggerPullSync();
+  });
+
+  // Create Secret Gist
+  document.getElementById('btn-gh-create').addEventListener('click', async () => {
+    const pat = document.getElementById('gh-pat').value.trim();
+    if (!pat) return alert("PAT required to create gist.");
+    try {
+      const response = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${pat}`, 'Accept': 'application/vnd.github.v3+json' },
+        body: JSON.stringify({
+          description: "The Recon Ledger State",
+          public: false,
+          files: { "recon-ledger-state.json": { content: JSON.stringify(STATE, null, 2) } }
+        })
+      });
+      if (!response.ok) throw new Error("Failed to create Gist");
+      const data = await response.json();
+      document.getElementById('gh-gist-id').value = data.id;
+      document.getElementById('btn-gh-save').click();
+    } catch (e) {
+      alert("Error: " + e.message);
     }
   });
-  if (response.status === 404) return null; // File doesn't exist yet
-  if (!response.ok) throw new Error(`GitHub API Error: ${response.statusText}`);
-  return response.json();
+
+  document.getElementById('btn-gs-copy-code').addEventListener('click', () => {
+    const code = `function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("_RAW_STATE");
+  if (!sheet) sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("_RAW_STATE");
+  return ContentService.createTextOutput(sheet.getRange("A1").getValue() || "{}").setMimeType(ContentService.MimeType.JSON);
 }
 
-async function pullFromGitHub() {
-  const config = JSON.parse(localStorage.getItem('ghSyncConfig') || '{}');
-  if (!config.pat || !config.repo) return alert('Configure PAT and Repo first.');
-
+function doPost(e) {
   try {
-    updateSyncStatus('Pulling...');
-    const fileData = await getGitHubFile(config);
-    if (!fileData) {
-      updateSyncStatus('No file found');
-      return alert('File not found in repository.');
+    var payload = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Save raw state
+    var rawSheet = ss.getSheetByName("_RAW_STATE");
+    if (!rawSheet) rawSheet = ss.insertSheet("_RAW_STATE");
+    rawSheet.getRange("A1").setValue(JSON.stringify(payload.state));
+
+    // Populate human-readable syllabus ledger
+    if (payload.state && payload.state.topics) {
+      var ledgerSheet = ss.getSheetByName("Syllabus_Ledger");
+      if (!ledgerSheet) ledgerSheet = ss.insertSheet("Syllabus_Ledger");
+      ledgerSheet.clear();
+
+      var rows = [["Subject", "Topic", "Priority", "Steps (1-6)", "Failures"]];
+      payload.state.topics.forEach(function(t) {
+        var stepCount = t.steps.filter(Boolean).length;
+        var failCount = t.failureLog ? t.failureLog.length : 0;
+        rows.push([t.subject, t.topic, t.priority, stepCount + "/6", failCount]);
+      });
+      ledgerSheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
     }
 
-    const content = decodeURIComponent(escape(atob(fileData.content)));
-    const importedState = JSON.parse(content);
-
-    // We replace the entire state when pulling from sync (differs from merge)
-    STATE = importedState;
-    saveState();
-    renderApp();
-
-    const now = new Date();
-    updateSyncStatus(`Pulled ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
-    alert('Successfully pulled state from GitHub.');
-  } catch (e) {
-    updateSyncStatus('Error');
-    alert('Pull failed: ' + e.message);
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+  } catch(err) {
+    return ContentService.createTextOutput("Error").setMimeType(ContentService.MimeType.TEXT);
   }
+}`;
+    navigator.clipboard.writeText(code).then(() => alert('Apps Script Copied to Clipboard!'));
+  });
+
+  document.getElementById('btn-copy-magic-link').addEventListener('click', () => {
+    const configStr = localStorage.getItem('cloudSyncConfig');
+    if (!configStr) return;
+    const magicUrl = `${window.location.origin}${window.location.pathname}#pair=${btoa(unescape(encodeURIComponent(configStr)))}`;
+    navigator.clipboard.writeText(magicUrl).then(() => alert('Magic Link Copied!'));
+  });
 }
 
-async function pushToGitHub(isAuto = false) {
-  const config = JSON.parse(localStorage.getItem('ghSyncConfig') || '{}');
-  if (!config.pat || !config.repo) {
-    if (!isAuto) alert('Configure PAT and Repo first.');
-    return;
+function renderPairingSection() {
+  const configStr = localStorage.getItem('cloudSyncConfig');
+  if (!configStr || configStr === '{"provider": "none"}') return;
+
+  const section = document.getElementById('pairing-section');
+  section.classList.remove('hidden');
+
+  const b64 = btoa(unescape(encodeURIComponent(configStr)));
+  const magicUrl = `${window.location.origin}${window.location.pathname}#pair=${b64}`;
+
+  // Use public QR api to render image
+  const qrContainer = document.getElementById('qr-container');
+  qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(magicUrl)}" alt="Pairing QR" style="width:100%; height:100%;">`;
+}
+
+// --- Sync Core Engine ---
+
+async function fetchRemoteState(config) {
+  if (config.provider === 'sheets') {
+    const url = config.gsPin ? `${config.gsUrl}?pin=${encodeURIComponent(config.gsPin)}` : config.gsUrl;
+    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+    if (!response.ok) throw new Error("Sheets GET failed");
+    return await response.json();
+  } else if (config.provider === 'gist') {
+    const response = await fetch(`https://api.github.com/gists/${config.ghGistId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `token ${config.ghPat}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!response.ok) throw new Error("Gist GET failed");
+    const data = await response.json();
+    return JSON.parse(data.files['recon-ledger-state.json'].content);
   }
+  return null;
+}
 
-  try {
-    updateSyncStatus(isAuto ? 'Auto-syncing...' : 'Pushing...');
-
-    // 1. Get sha if file exists
-    let sha = undefined;
-    const fileData = await getGitHubFile(config);
-    if (fileData) sha = fileData.sha;
-
-    // 2. Prepare payload
-    const contentStr = JSON.stringify(STATE, null, 2);
-    // Base64 encode supporting utf-8
-    const base64Content = btoa(unescape(encodeURIComponent(contentStr)));
-
-    const url = `https://api.github.com/repos/${config.repo}/contents/${config.path}`;
-    const payload = {
-      message: `Recon Ledger Sync: ${new Date().toISOString()}`,
-      content: base64Content,
-      branch: config.branch
-    };
-    if (sha) payload.sha = sha;
-
-    // 3. Push
-    const response = await fetch(url, {
-      method: 'PUT',
+async function pushRemoteState(config, state) {
+  if (config.provider === 'sheets') {
+    const response = await fetch(config.gsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ pin: config.gsPin, state }),
+      redirect: 'follow'
+    });
+    if (!response.ok) throw new Error("Sheets POST failed");
+  } else if (config.provider === 'gist') {
+    const response = await fetch(`https://api.github.com/gists/${config.ghGistId}`, {
+      method: 'PATCH',
       headers: {
-        'Authorization': `token ${config.pat}`,
+        'Authorization': `token ${config.ghPat}`,
         'Accept': 'application/vnd.github.v3+json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ files: { 'recon-ledger-state.json': { content: JSON.stringify(state, null, 2) } } })
     });
-
-    if (!response.ok) throw new Error(`Push failed: ${response.statusText}`);
-
-    const now = new Date();
-    updateSyncStatus(`Synced ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`);
-    if (!isAuto) alert('Successfully pushed state to GitHub.');
-  } catch (e) {
-    updateSyncStatus('Sync Error');
-    if (!isAuto) alert('Push failed: ' + e.message);
-    else console.error('Auto-sync failed', e);
+    if (!response.ok) throw new Error("Gist PATCH failed");
   }
 }
 
-function updateSyncStatus(msg) {
-  const el = document.getElementById('sync-status');
-  if (el) el.textContent = msg;
+// Conflict-Free Per-Item Timestamp Merge
+function mergeStates(local, remote) {
+  if (!remote || !remote.topics) return local;
+
+  const merged = JSON.parse(JSON.stringify(local));
+
+  // Merge Topics
+  const remoteTopicMap = new Map(remote.topics.map(t => [t.id, t]));
+
+  merged.topics = merged.topics.map(localT => {
+    if (remoteTopicMap.has(localT.id)) {
+      const remoteT = remoteTopicMap.get(localT.id);
+      remoteTopicMap.delete(localT.id); // done with it
+      // if remote is newer, use remote
+      if ((remoteT.updatedAt || 0) > (localT.updatedAt || 0)) {
+        return remoteT;
+      }
+    }
+    return localT;
+  });
+
+  // Append new remote topics that weren't in local (and not deleted)
+  for (const remoteT of remoteTopicMap.values()) {
+    if (!merged.deletedTopicIds.includes(remoteT.id)) {
+      merged.topics.push(remoteT);
+    }
+  }
+
+  // Merge Exams & Phases (simple timestamp array merge)
+  // Assuming exams and phases are static sets, we just match by ID and take latest.
+  merged.exams = merged.exams.map(lEx => {
+    const rEx = remote.exams?.find(r => r.id === lEx.id);
+    if (rEx && (rEx.updatedAt || 0) > (lEx.updatedAt || 0)) return rEx;
+    return lEx;
+  });
+
+  merged.phases = merged.phases.map(lPh => {
+    const rPh = remote.phases?.find(r => r.id === lPh.id);
+    if (rPh && (rPh.updatedAt || 0) > (lPh.updatedAt || 0)) return rPh;
+    return lPh;
+  });
+
+  // Merge Habit Logs (Date key + habit OR)
+  if (remote.habitLog) {
+    for (const [date, remoteLog] of Object.entries(remote.habitLog)) {
+      if (!merged.habitLog[date]) {
+        merged.habitLog[date] = remoteLog;
+      } else {
+        const localLog = merged.habitLog[date];
+        if ((remoteLog._updatedAt || 0) > (localLog._updatedAt || 0)) {
+           // Remote is newer snapshot, merge missing keys
+           for (const [hId, val] of Object.entries(remoteLog)) {
+             if (hId === '_updatedAt') continue;
+             if (val === true) localLog[hId] = true; // logical OR check
+           }
+           localLog._updatedAt = remoteLog._updatedAt;
+        } else {
+           // Local is newer snapshot, merge remote trues in case they were checked elsewhere
+           for (const [hId, val] of Object.entries(remoteLog)) {
+             if (hId === '_updatedAt') continue;
+             if (val === true) localLog[hId] = true;
+           }
+        }
+      }
+    }
+  }
+
+  return merged;
 }
 
-// Debounced Auto-sync
+function updateSyncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.className = '';
+
+  if (status === 'offline') {
+    el.innerHTML = '○ Offline';
+    el.classList.add('offline');
+  } else if (status === 'syncing') {
+    el.innerHTML = '◐ Syncing...';
+    el.classList.add('syncing');
+  } else {
+    const now = new Date();
+    el.innerHTML = `● Synced · ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    el.classList.add('online');
+  }
+}
+
+// Exposed triggers for app.js
+window.triggerPullSync = async function() {
+  if (!navigator.onLine) { updateSyncStatus('offline'); return; }
+
+  const config = JSON.parse(localStorage.getItem('cloudSyncConfig') || '{"provider": "none"}');
+  if (config.provider === 'none') return;
+
+  try {
+    updateSyncStatus('syncing');
+    const remoteState = await fetchRemoteState(config);
+    if (remoteState) {
+      STATE = mergeStates(STATE, remoteState);
+      localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
+      renderApp();
+    }
+    updateSyncStatus('synced');
+  } catch (e) {
+    console.error("Pull Sync Error:", e);
+    updateSyncStatus('offline');
+  }
+};
+
+window.triggerInitialSync = function() {
+  window.triggerPullSync();
+};
+
 let autoSyncTimer = null;
 window.triggerAutoSync = function() {
-  const config = JSON.parse(localStorage.getItem('ghSyncConfig') || '{}');
-  if (config.pat && config.repo && config.autoSync) {
-    if (autoSyncTimer) clearTimeout(autoSyncTimer);
-    updateSyncStatus('Pending...');
-    autoSyncTimer = setTimeout(() => {
-      pushToGitHub(true);
-    }, 1500); // Debounce 1.5s
-  }
+  const config = JSON.parse(localStorage.getItem('cloudSyncConfig') || '{"provider": "none"}');
+  if (config.provider === 'none') return;
+  if (!navigator.onLine) { updateSyncStatus('offline'); return; }
+
+  updateSyncStatus('syncing');
+  if (autoSyncTimer) clearTimeout(autoSyncTimer);
+
+  autoSyncTimer = setTimeout(async () => {
+    try {
+      // Always pull & merge right before push to avoid overwriting interleaving edits
+      const remoteState = await fetchRemoteState(config);
+      if (remoteState) {
+        STATE = mergeStates(STATE, remoteState);
+        localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
+        renderApp(); // visually update with anything pulled
+      }
+      // Push merged state
+      await pushRemoteState(config, STATE);
+      updateSyncStatus('synced');
+    } catch (e) {
+      console.error("Push Sync Error:", e);
+      updateSyncStatus('offline');
+    }
+  }, 1200); // 1.2s debounce
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   setupMergeEvents();
-  setupGitHubSyncEvents();
+  setupCloudSyncEvents();
+  setTimeout(() => window.triggerInitialSync(), 500); // Initial sync on load
 });

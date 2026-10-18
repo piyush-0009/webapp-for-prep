@@ -4,16 +4,30 @@ let STATE = {
   exams: [],
   habits: [],
   topics: [],
-  habitLog: {}
+  habitLog: {},
+  deletedTopicIds: []
 };
 
 function initApp() {
+  if (window.location.hash.startsWith('#pair=')) {
+    try {
+      const base64str = window.location.hash.replace('#pair=', '');
+      const configStr = decodeURIComponent(escape(atob(base64str)));
+      localStorage.setItem('cloudSyncConfig', configStr);
+      history.replaceState(null, '', window.location.pathname);
+      if (window.triggerInitialSync) window.triggerInitialSync();
+    } catch (e) {
+      console.error('Error decoding magic link', e);
+    }
+  }
+
   const savedState = localStorage.getItem('reconLedgerState');
   if (savedState) {
     try {
       STATE = JSON.parse(savedState);
       // Migrate missing keys if needed
       if (!STATE.habitLog) STATE.habitLog = {};
+      if (!STATE.deletedTopicIds) STATE.deletedTopicIds = [];
     } catch (e) {
       console.error("Error parsing local state, falling back to seed", e);
       STATE = JSON.parse(JSON.stringify(SEED_DATA));
@@ -30,6 +44,10 @@ function saveState() {
   localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
   // Call debounced sync if sync logic is hooked up
   if (window.triggerAutoSync) window.triggerAutoSync();
+}
+
+function updateItemTimestamp(item) {
+  if (item) item.updatedAt = Date.now();
 }
 
 function getLogicalDateString(dateObj = new Date()) {
@@ -128,13 +146,17 @@ function renderCommandCenter() {
       if(exam.mode === "Active") exam.mode = "Drip";
       else if(exam.mode === "Drip") exam.mode = "Standby";
       else exam.mode = "Active";
+      updateItemTimestamp(exam);
       saveState();
       renderApp();
     });
   });
 
   phaseSelector.addEventListener('change', (e) => {
-    STATE.phases.forEach(p => p.isActive = (p.id === e.target.value));
+    STATE.phases.forEach(p => {
+      if (p.id === e.target.value) { p.isActive = true; updateItemTimestamp(p); }
+      else if (p.isActive) { p.isActive = false; updateItemTimestamp(p); }
+    });
     saveState();
     renderApp();
   });
@@ -143,6 +165,7 @@ function renderCommandCenter() {
     el.addEventListener('blur', (e) => {
       const exam = STATE.exams.find(ex => ex.id === e.target.getAttribute('data-id'));
       exam.name = e.target.textContent;
+      updateItemTimestamp(exam);
       saveState();
       renderApp();
     });
@@ -152,6 +175,7 @@ function renderCommandCenter() {
     el.addEventListener('change', (e) => {
       const exam = STATE.exams.find(ex => ex.id === e.target.getAttribute('data-id'));
       exam.targetDate = e.target.value;
+      updateItemTimestamp(exam);
       saveState();
       renderApp();
     });
@@ -203,6 +227,7 @@ function renderMasterLedger() {
     btn.addEventListener('click', (e) => {
       const topic = STATE.topics.find(t => t.id === e.target.getAttribute('data-id'));
       topic.pinned = !topic.pinned;
+      updateItemTimestamp(topic);
       saveState();
       renderApp();
     });
@@ -214,6 +239,7 @@ function renderMasterLedger() {
       const idx = parseInt(e.target.getAttribute('data-idx'));
       const topic = STATE.topics.find(t => t.id === id);
       topic.steps[idx] = e.target.checked;
+      updateItemTimestamp(topic);
 
       // Auto-mark Habit 1 if any step is checked
       if (e.target.checked) {
@@ -249,6 +275,7 @@ function handleStep6Completion(topic, cardElement = null) {
 
     cardElement.querySelector('.btn-master-topic').addEventListener('click', () => {
       topic.status = "Mastered";
+      updateItemTimestamp(topic);
       saveState();
       renderApp();
     });
@@ -259,6 +286,7 @@ function handleStep6Completion(topic, cardElement = null) {
       d.setDate(d.getDate() + 7);
       topic.cooldownUntil = d.toISOString().split('T')[0];
       topic.status = "Cooldown";
+      updateItemTimestamp(topic);
       saveState();
       renderApp();
     });
@@ -274,6 +302,7 @@ function handleStep6Completion(topic, cardElement = null) {
       topic.cooldownUntil = d.toISOString().split('T')[0];
       topic.status = "Cooldown";
     }
+    updateItemTimestamp(topic);
     saveState();
     renderApp();
   }
@@ -283,6 +312,7 @@ function markHabit1() {
   const today = getLogicalDateString();
   if (!STATE.habitLog[today]) STATE.habitLog[today] = {};
   STATE.habitLog[today]['habit-1'] = true;
+  STATE.habitLog[today]['_updatedAt'] = Date.now();
   saveState();
   renderApp();
 }
@@ -352,6 +382,7 @@ function openDossier(id) {
     document.getElementById('save-indicator').textContent = 'Saving...';
     saveTimeout = setTimeout(() => {
       topic.dossierNotes = e.target.value;
+      updateItemTimestamp(topic);
       saveState();
       document.getElementById('save-indicator').textContent = 'Saved';
       setTimeout(() => document.getElementById('save-indicator').textContent = '', 2000);
@@ -362,6 +393,7 @@ function openDossier(id) {
     chk.addEventListener('change', (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'));
       topic.sixStems[idx] = e.target.checked;
+      updateItemTimestamp(topic);
       saveState();
       openDossier(id); // refresh verdict
       renderApp();
@@ -375,6 +407,7 @@ function openDossier(id) {
       note: document.getElementById('new-fail-note').value,
       resolved: false
     });
+    updateItemTimestamp(topic);
     saveState();
     openDossier(id);
     renderApp();
@@ -384,6 +417,7 @@ function openDossier(id) {
     chk.addEventListener('change', (e) => {
       const idx = parseInt(e.target.getAttribute('data-idx'));
       topic.failureLog[idx].resolved = e.target.checked;
+      updateItemTimestamp(topic);
       saveState();
       openDossier(id);
       renderApp();
@@ -403,7 +437,7 @@ function setupExtraEvents() {
     const prio = document.getElementById('add-priority').value;
     if(!subject || !tName) return alert("Subject and Topic required");
 
-    STATE.topics.push({
+    const newTopic = {
       id: 't' + Date.now(),
       subject,
       topic: tName,
@@ -416,8 +450,11 @@ function setupExtraEvents() {
       sixStems: [false,false,false,false,false,false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
-    });
+      status: "In Progress",
+      updatedAt: Date.now()
+    };
+    STATE.topics.push(newTopic);
+
     document.getElementById('add-subject').value = '';
     document.getElementById('add-topic').value = '';
     saveState();
@@ -546,6 +583,7 @@ function renderTodaysDesk() {
         const topic = STATE.topics.find(t => t.id === id);
 
         topic.steps[idx] = true;
+        updateItemTimestamp(topic);
         markHabit1();
 
         if (idx === 5) {
@@ -609,6 +647,7 @@ function renderFranklinGrid() {
       const habitId = e.target.getAttribute('data-habit');
       if (!STATE.habitLog[date]) STATE.habitLog[date] = {};
       STATE.habitLog[date][habitId] = !STATE.habitLog[date][habitId];
+      STATE.habitLog[date]['_updatedAt'] = Date.now();
       saveState();
       renderApp();
     });
@@ -649,4 +688,26 @@ setupEventListeners = function() {
   setupExtraEvents();
 };
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', () => {
+  initApp();
+
+  // Set up visibility and focus sync triggers
+  let lastPull = 0;
+  function throttledPull() {
+    const now = Date.now();
+    if (now - lastPull > 3000) { // 3-second throttle to prevent rapid tab-switch API spam
+      lastPull = now;
+      if (window.triggerPullSync) window.triggerPullSync();
+    }
+  }
+
+  window.addEventListener('focus', throttledPull);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      throttledPull();
+    }
+  });
+  window.addEventListener('online', () => {
+    if (window.triggerAutoSync) window.triggerAutoSync();
+  });
+});
