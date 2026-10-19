@@ -9,18 +9,6 @@ let STATE = {
 };
 
 function initApp() {
-  if (window.location.hash.startsWith('#pair=')) {
-    try {
-      const base64str = window.location.hash.replace('#pair=', '');
-      const configStr = decodeURIComponent(escape(atob(base64str)));
-      localStorage.setItem('cloudSyncConfig', configStr);
-      history.replaceState(null, '', window.location.pathname);
-      if (window.triggerInitialSync) window.triggerInitialSync();
-    } catch (e) {
-      console.error('Error decoding magic link', e);
-    }
-  }
-
   const savedState = localStorage.getItem('reconLedgerState');
   if (savedState) {
     try {
@@ -38,16 +26,29 @@ function initApp() {
 
   setupEventListeners();
   renderApp();
+
+  if (window.SyncEngine) {
+    SyncEngine.init({
+      getState: () => STATE,
+      setStateAndRender: (newState) => {
+        STATE = newState;
+        saveState();
+        renderApp();
+      }
+    });
+  }
 }
 
 function saveState() {
   localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
-  // Call debounced sync if sync logic is hooked up
-  if (window.triggerAutoSync) window.triggerAutoSync();
-}
+  }
 
 function updateItemTimestamp(item) {
-  if (item) item.updatedAt = Date.now();
+  if (window.SyncEngine) {
+    SyncEngine.recordMutation(item);
+  } else if (item) {
+    item.updatedAt = Date.now();
+  }
 }
 
 function getLogicalDateString(dateObj = new Date()) {
@@ -686,28 +687,315 @@ const originalSetup = setupEventListeners;
 setupEventListeners = function() {
   originalSetup();
   setupExtraEvents();
+  setupMergeEvents();
+  setupCloudSyncEvents();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 
-  // Set up visibility and focus sync triggers
-  let lastPull = 0;
-  function throttledPull() {
-    const now = Date.now();
-    if (now - lastPull > 3000) { // 3-second throttle to prevent rapid tab-switch API spam
-      lastPull = now;
-      if (window.triggerPullSync) window.triggerPullSync();
+});
+
+
+function setupMergeEvents() {
+  const modal = document.getElementById('smart-merge-modal');
+  const btnOpen = document.getElementById('smart-merge-btn');
+  const btnClose = document.getElementById('close-merge-modal');
+  const btnImport = document.getElementById('btn-import-merge');
+  const btnExportCsv = document.getElementById('btn-export-csv');
+  const btnExportJson = document.getElementById('btn-export-json');
+  const inputArea = document.getElementById('merge-data-input');
+
+  if(btnOpen) btnOpen.addEventListener('click', () => modal.classList.remove('hidden'));
+  if(btnClose) btnClose.addEventListener('click', () => modal.classList.add('hidden'));
+
+  if(btnImport) btnImport.addEventListener('click', () => {
+    const dataStr = inputArea.value.trim();
+    if (!dataStr) return;
+
+    try {
+      if (dataStr.startsWith('{') || dataStr.startsWith('[')) {
+        handleJSONMerge(JSON.parse(dataStr));
+      } else {
+        handleCSVMerge(dataStr);
+      }
+      saveState();
+      renderApp();
+      alert('Merge Import Successful');
+      modal.classList.add('hidden');
+      inputArea.value = '';
+    } catch (e) {
+      alert('Error parsing data: ' + e.message);
     }
+  });
+
+  if(btnExportCsv) btnExportCsv.addEventListener('click', () => {
+    let csv = "Subject|Topic|Priority|ExamTags|DossierNotes\n";
+    STATE.topics.forEach(t => {
+      // Escape pipes in notes if any
+      const safeNotes = (t.dossierNotes || '').replace(/\|/g, '-');
+      csv += `${t.subject}|${t.topic}|${t.priority}|${t.examTags.join(',')}|${safeNotes}\n`;
+    });
+    downloadFile(csv, 'recon-ledger-export.csv', 'text/csv');
+  });
+
+  if(btnExportJson) btnExportJson.addEventListener('click', () => {
+    downloadFile(JSON.stringify(STATE, null, 2), 'recon-ledger-state.json', 'application/json');
+  });
+}
+
+function handleJSONMerge(importedState) {
+  if (importedState.topics && Array.isArray(importedState.topics)) {
+    importedState.topics.forEach(incoming => {
+      mergeSingleTopic(incoming);
+    });
+  }
+}
+
+function handleCSVMerge(csvStr) {
+  const lines = csvStr.split('\n');
+  if (lines.length < 2) return; // Need header + data
+  const headers = lines[0].split('|').map(h => h.trim().toLowerCase());
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols = lines[i].split('|');
+    let incoming = { subject: "Uncategorized", topic: "", priority: "Layer C (Compression)", examTags: [], dossierNotes: "" };
+
+    headers.forEach((h, idx) => {
+      const val = (cols[idx] || '').trim();
+      if (h === 'subject') incoming.subject = val;
+      if (h === 'topic') incoming.topic = val;
+      if (h === 'priority') incoming.priority = val;
+      if (h === 'examtags') incoming.examTags = val.split(',').map(s=>s.trim()).filter(Boolean);
+      if (h === 'dossiernotes' || h === 'notes_link') incoming.dossierNotes = val;
+    });
+
+    if (incoming.topic) mergeSingleTopic(incoming);
+  }
+}
+
+function mergeSingleTopic(incoming) {
+  const keyMatch = t => t.subject.toLowerCase() === incoming.subject.toLowerCase() && t.topic.toLowerCase() === incoming.topic.toLowerCase();
+  let existing = STATE.topics.find(keyMatch);
+
+  if (existing) {
+    // Non-destructive update
+    if (incoming.priority) existing.priority = incoming.priority;
+    if (incoming.examTags) {
+      incoming.examTags.forEach(tag => {
+        if (!existing.examTags.includes(tag)) existing.examTags.push(tag);
+      });
+    }
+    if (incoming.dossierNotes && !existing.dossierNotes.includes(incoming.dossierNotes)) {
+      existing.dossierNotes += `\n${incoming.dossierNotes}`;
+    }
+  } else {
+    // New topic
+    STATE.topics.push({
+      id: 't' + Date.now() + Math.floor(Math.random()*1000),
+      subject: incoming.subject,
+      topic: incoming.topic,
+      priority: incoming.priority || "Layer C (Compression)",
+      pyqWeight: incoming.pyqWeight || 0,
+      examTags: incoming.examTags || [],
+      pinned: false,
+      dossierNotes: incoming.dossierNotes || "",
+      steps: [false,false,false,false,false,false],
+      sixStems: [false,false,false,false,false,false],
+      failureLog: [],
+      cooldownUntil: null,
+      status: "In Progress"
+    });
+  }
+}
+
+function downloadFile(content, filename, contentType) {
+  const blob = new Blob([content], { type: contentType });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+
+
+
+function setupCloudSyncEvents() {
+  const modal = document.getElementById('github-sync-modal');
+  const btnOpen = document.getElementById('github-sync-btn');
+  const btnClose = document.getElementById('close-sync-modal');
+
+  // Tabs
+  const tabSheets = document.getElementById('tab-sheets');
+  const tabGist = document.getElementById('tab-gist');
+  const paneSheets = document.getElementById('pane-sheets');
+  const paneGist = document.getElementById('pane-gist');
+
+  if (btnOpen) btnOpen.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+
+    if (window.SyncEngine) {
+      const config = SyncEngine.getConfig();
+      if (config.provider === 'gist') {
+        tabGist.click();
+      } else {
+        tabSheets.click();
+      }
+      if (config.scriptUrl) document.getElementById('gs-url').value = config.scriptUrl;
+      if (config.pin) document.getElementById('gs-pin').value = config.pin;
+      if (config.gistToken) document.getElementById('gh-pat').value = config.gistToken;
+      if (config.gistId) document.getElementById('gh-gist-id').value = config.gistId;
+    }
+  });
+
+  if (btnClose) btnClose.addEventListener('click', () => modal.classList.add('hidden'));
+
+  // Tab switching
+  if (tabSheets) {
+    tabSheets.addEventListener('click', () => {
+      tabSheets.classList.add('active');
+      tabGist.classList.remove('active');
+      paneSheets.classList.remove('hidden');
+      paneGist.classList.add('hidden');
+    });
+  }
+  if (tabGist) {
+    tabGist.addEventListener('click', () => {
+      tabGist.classList.add('active');
+      tabSheets.classList.remove('active');
+      paneGist.classList.remove('hidden');
+      paneSheets.classList.add('hidden');
+    });
   }
 
-  window.addEventListener('focus', throttledPull);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      throttledPull();
+  // Save Config Option A (Sheets)
+  const btnGsSave = document.getElementById('btn-gs-save');
+  if (btnGsSave) {
+    btnGsSave.addEventListener('click', () => {
+      const newConfig = {
+        provider: 'sheets',
+        scriptUrl: document.getElementById('gs-url').value.trim(),
+        pin: document.getElementById('gs-pin').value.trim(),
+        autoSync: true
+      };
+      if (!newConfig.scriptUrl) return alert("Web App URL is required.");
+      if (window.SyncEngine) {
+        SyncEngine.saveConfig(newConfig);
+        alert('Google Sheets Config Saved!');
+        SyncEngine.syncNow('merge');
+      }
+    });
+  }
+
+  // Save Config Option B (Gist)
+  const btnGhSave = document.getElementById('btn-gh-save');
+  if (btnGhSave) {
+    btnGhSave.addEventListener('click', () => {
+      const newConfig = {
+        provider: 'gist',
+        gistToken: document.getElementById('gh-pat').value.trim(),
+        gistId: document.getElementById('gh-gist-id').value.trim(),
+        autoSync: true
+      };
+      if (!newConfig.gistToken || !newConfig.gistId) return alert("PAT and Gist ID required.");
+      if (window.SyncEngine) {
+        SyncEngine.saveConfig(newConfig);
+        alert('GitHub Gist Config Saved!');
+        SyncEngine.syncNow('merge');
+      }
+    });
+  }
+
+  // Create Secret Gist
+  const btnGhCreate = document.getElementById('btn-gh-create');
+  if (btnGhCreate) {
+    btnGhCreate.addEventListener('click', async () => {
+      const pat = document.getElementById('gh-pat').value.trim();
+      if (!pat) return alert("PAT required to create gist.");
+      if (window.SyncEngine) {
+        try {
+           const id = await SyncEngine.createNewGist(pat, STATE);
+           document.getElementById('gh-gist-id').value = id;
+           document.getElementById('btn-gh-save').click();
+        } catch(e) {
+           alert(e.message);
+        }
+      }
+    });
+  }
+
+  const btnGsCopyCode = document.getElementById('btn-gs-copy-code');
+  if (btnGsCopyCode) {
+    btnGsCopyCode.addEventListener('click', () => {
+        const code = `function doGet(e) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("_RAW_STATE");
+    if (!sheet) sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("_RAW_STATE");
+    return ContentService.createTextOutput(sheet.getRange("A1").getValue() || "{}").setMimeType(ContentService.MimeType.JSON);
+  }
+
+  function doPost(e) {
+    try {
+      var payload = JSON.parse(e.postData.contents);
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+      var rawSheet = ss.getSheetByName("_RAW_STATE");
+      if (!rawSheet) rawSheet = ss.insertSheet("_RAW_STATE");
+      rawSheet.getRange("A1").setValue(JSON.stringify(payload));
+
+      return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({error: err.toString()})).setMimeType(ContentService.MimeType.JSON);
     }
-  });
-  window.addEventListener('online', () => {
-    if (window.triggerAutoSync) window.triggerAutoSync();
-  });
-});
+  }`;
+      navigator.clipboard.writeText(code).then(() => alert('Apps Script Copied to Clipboard!'));
+    });
+  }
+
+  const btnCopyMagicLink = document.getElementById('btn-copy-magic-link');
+  if (btnCopyMagicLink) {
+    btnCopyMagicLink.addEventListener('click', () => {
+       const linkInput = document.getElementById('sync-pairing-link');
+       if (linkInput && linkInput.value) {
+         navigator.clipboard.writeText(linkInput.value).then(() => alert('Magic Link Copied!'));
+       } else {
+         if (window.SyncEngine) {
+           const cfg = SyncEngine.getConfig();
+           const payload = encodeURIComponent(btoa(JSON.stringify(cfg)));
+           const magicUrl = `${window.location.origin}${window.location.pathname}#pair=${payload}`;
+           navigator.clipboard.writeText(magicUrl).then(() => alert('Magic Link Copied!'));
+         }
+       }
+    });
+  }
+
+  // New sync buttons
+  const btnSyncMergeNow = document.getElementById('btn-sync-merge-now');
+  if (btnSyncMergeNow) {
+    btnSyncMergeNow.addEventListener('click', () => {
+      if (window.SyncEngine) SyncEngine.syncNow('merge');
+    });
+  }
+
+  const btnForcePush = document.getElementById('btn-force-push');
+  if (btnForcePush) {
+    btnForcePush.addEventListener('click', () => {
+      if (window.SyncEngine) {
+        if (confirm("Are you sure you want to overwrite cloud data with your local data?")) {
+           SyncEngine.syncNow('force-push');
+        }
+      }
+    });
+  }
+
+  const btnForcePull = document.getElementById('btn-force-pull');
+  if (btnForcePull) {
+    btnForcePull.addEventListener('click', () => {
+      if (window.SyncEngine) {
+        if (confirm("Are you sure you want to overwrite local data with cloud data?")) {
+           SyncEngine.syncNow('force-pull');
+        }
+      }
+    });
+  }
+}

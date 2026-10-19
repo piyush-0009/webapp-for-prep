@@ -5,57 +5,63 @@ const SEED_DATA = {
       name: "Setup & Physics Foundation",
       dates: "21 Sep – 11 Oct",
       motto: "Broad JAM ~4/10 operational pass + syllabus maps + 15 GA Qs/day",
-      isActive: false
+      isActive: false,
+      updatedAt: 0
     },
     {
       id: "phase-2",
       name: "Chemistry Foundation & XL Recon",
       dates: "12 Oct – 25 Oct",
       motto: "TIFR/JAM Chemistry foundation + GATE-XL Recon Missions (Chem, Biochem, Microbio)",
-      isActive: true
+      isActive: true,
+      updatedAt: 0
     },
     {
       id: "phase-3",
       name: "Biology-Dominant Stretch",
       dates: "Late Oct – 29 Nov",
       motto: "Integrate TIFR conceptual spine with JAM, GATE-BT, XL-Biochem & XL-Microbio tags; Phys/Chem in retrieval maintenance",
-      isActive: false
+      isActive: false,
+      updatedAt: 0
     },
     {
       id: "phase-4",
       name: "TIFR Full-Length PYQ Block & Exam",
       dates: "30 Nov – 13 Dec",
       motto: "Attempt → Analyse → Repair → Retest paper loop; TIFR Exam on 13 Dec",
-      isActive: false
+      isActive: false,
+      updatedAt: 0
     },
     {
       id: "phase-5",
       name: "Biological Engineering (200h) + Mathematics",
       dates: "14 Dec – 31 Jan",
       motto: "Major shift to GATE-BT Biological Engineering (~200h) & Intensive Mathematics (~2 weeks alternating) + End-Sem Exams; Biology/Phys/Chem on maintenance",
-      isActive: false
+      isActive: false,
+      updatedAt: 0
     },
     {
       id: "phase-6",
       name: "Final Maintenance & Examinations",
       dates: "Feb – Apr",
       motto: "Zero first-pass learning; pure blind retrieval, mixed tests, and final exams",
-      isActive: false
+      isActive: false,
+      updatedAt: 0
     }
   ],
   exams: [
-    { id: "TIFR", name: "TIFR JGEEBILS", targetDate: "2026-12-13", mode: "Active", notes: "" },
-    { id: "ENDSEM", name: "End-Sem Exams", targetDate: "2026-12-22", mode: "Drip", notes: "" },
-    { id: "GATE-BT", name: "GATE-BT (Biotech)", targetDate: "2027-02-06", mode: "Active", notes: "" },
-    { id: "GATE-XL", name: "GATE-XL (Life Sci)", targetDate: "2027-02-07", mode: "Active", notes: "" },
-    { id: "JAM", name: "IIT JAM", targetDate: "2027-02-14", mode: "Active", notes: "" },
-    { id: "EXAM-5", name: "Exam 5 (April Window)", targetDate: "2027-04-18", mode: "Standby", notes: "" }
+    { id: "TIFR", name: "TIFR JGEEBILS", targetDate: "2026-12-13", mode: "Active", notes: "", updatedAt: 0 },
+    { id: "ENDSEM", name: "End-Sem Exams", targetDate: "2026-12-22", mode: "Drip", notes: "", updatedAt: 0 },
+    { id: "GATE-BT", name: "GATE-BT (Biotech)", targetDate: "2027-02-06", mode: "Active", notes: "", updatedAt: 0 },
+    { id: "GATE-XL", name: "GATE-XL (Life Sci)", targetDate: "2027-02-07", mode: "Active", notes: "", updatedAt: 0 },
+    { id: "JAM", name: "IIT JAM", targetDate: "2027-02-14", mode: "Active", notes: "", updatedAt: 0 },
+    { id: "EXAM-5", name: "Exam 5 (April Window)", targetDate: "2027-04-18", mode: "Standby", notes: "", updatedAt: 0 }
   ],
   habits: [
-    { id: "habit-1", name: "Recon Pipeline Step" },
-    { id: "habit-2", name: "15 GA Qs (10 New + 5 Error)" },
-    { id: "habit-3", name: "20m Closed-Book Recall / Anki" },
-    { id: "habit-4", name: "Failure Ledger 48h Repair" }
+    { id: "habit-1", name: "Recon Pipeline Step", updatedAt: 0 },
+    { id: "habit-2", name: "15 GA Qs (10 New + 5 Error)", updatedAt: 0 },
+    { id: "habit-3", name: "20m Closed-Book Recall / Anki", updatedAt: 0 },
+    { id: "habit-4", name: "Failure Ledger 48h Repair", updatedAt: 0 }
   ],
   topics: [
     {
@@ -71,7 +77,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t2",
@@ -86,7 +93,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t3",
@@ -101,7 +109,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t4",
@@ -116,7 +125,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t5",
@@ -131,7 +141,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t6",
@@ -146,7 +157,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t7",
@@ -161,7 +173,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t8",
@@ -176,7 +189,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t9",
@@ -191,7 +205,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t10",
@@ -206,7 +221,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t11",
@@ -221,7 +237,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t12",
@@ -236,7 +253,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t13",
@@ -251,7 +269,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t14",
@@ -266,7 +285,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t15",
@@ -281,7 +301,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t16",
@@ -296,7 +317,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t17",
@@ -311,7 +333,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t18",
@@ -326,7 +349,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t19",
@@ -341,7 +365,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t20",
@@ -356,7 +381,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t21",
@@ -371,7 +397,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t22",
@@ -386,7 +413,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t23",
@@ -401,7 +429,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t24",
@@ -416,7 +445,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     },
     {
       id: "t25",
@@ -431,7 +461,8 @@ const SEED_DATA = {
       sixStems: [false, false, false, false, false, false],
       failureLog: [],
       cooldownUntil: null,
-      status: "In Progress"
+      status: "In Progress",
+      updatedAt: 0
     }
   ],
   habitLog: {} // Map of "YYYY-MM-DD" -> { habitId: boolean }
