@@ -22,7 +22,7 @@
         <select id="campaign-phase-selector" class="phase-selector"></select>
         <button id="theme-toggle" class="btn-icon" title="Toggle Day/Night">🌗</button>
         <button id="smart-merge-btn" class="btn" title="Smart Merge Import/Export">⎘ Merge Data</button>
-        <button id="github-sync-btn" class="btn" title="Cloud Sync Status">☁️ <span id="sync-status">Offline</span></button>
+        <button id="github-sync-btn" class="btn" title="Cloud Sync Status"><div id="sync-status-pill" class="sync-pill sync-idle"><span class="sync-dot">○</span> Sync Not Configured</div></button>
       </div>
     </div>
 
@@ -158,6 +158,12 @@
         <button id="close-sync-modal" class="btn-icon">✕</button>
       </div>
       <div class="modal-body">
+        <pre id="sync-diagnostic-log" style="font-family: monospace; max-height: 150px; overflow-y: auto; background: #eee; padding: 10px; font-size: 12px; margin-bottom: 10px; white-space: pre-wrap;"></pre>
+        <div class="modal-actions" style="margin-bottom: 1rem;">
+          <button id="btn-sync-merge-now" class="btn-primary">[Sync & Merge Now]</button>
+          <button id="btn-force-push" class="btn">[Force Push Local → Cloud]</button>
+          <button id="btn-force-pull" class="btn">[Force Pull Cloud → Local]</button>
+        </div>
         <div class="sync-tabs" style="display:flex; gap:1rem; margin-bottom:1rem; border-bottom:1px solid var(--border-hairline);">
           <button id="tab-sheets" class="btn-text active" style="font-weight:bold;">Option A: Google Sheets</button>
           <button id="tab-gist" class="btn-text">Option B: GitHub Gist</button>
@@ -190,11 +196,10 @@
           <div>
             <h3 style="font-size:1.1rem; margin-bottom:0.5rem;">Pair Phone / Tablet</h3>
             <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Scan QR code or use the magic link to sync instantly.</p>
+            <input type="text" id="sync-pairing-link" readonly style="width: 100%; margin-bottom: 0.5rem; padding: 0.4rem; background: var(--bg-subtle); border: 1px solid var(--border-hairline); color: var(--text-primary);">
             <button id="btn-copy-magic-link" class="btn">Copy Magic Pairing Link</button>
           </div>
-          <div id="qr-container" style="background:white; padding:10px; border-radius:4px; min-width:180px; min-height:180px; display:flex; justify-content:center; align-items:center;">
-             <span style="color:var(--text-secondary); font-size:0.8rem;">Loading QR...</span>
-          </div>
+          <div id="sync-pairing-qr" style="background:white; padding:10px; border-radius:4px; min-width:180px; min-height:180px; display:flex; justify-content:center; align-items:center;"><span style="color:var(--text-secondary); font-size:0.8rem;">Loading QR...</span></div>
         </div>
 
       </div>
