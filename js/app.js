@@ -1,4 +1,14 @@
 // State initialization and helper functions
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 let STATE = {
   phases: [],
   exams: [],
@@ -124,11 +134,11 @@ function renderCommandCenter() {
 
     card.innerHTML = `
       <div class="exam-header">
-        <span contenteditable="true" data-id="${exam.id}" class="editable-exam-name">${exam.name}</span>
-        <span class="mode-pill" data-id="${exam.id}">${exam.mode}</span>
+        <span contenteditable="true" data-id="${escapeHTML(exam.id)}" class="editable-exam-name">${escapeHTML(exam.name)}</span>
+        <span class="mode-pill" data-id="${escapeHTML(exam.id)}">${escapeHTML(exam.mode)}</span>
       </div>
       <div>
-        <input type="date" class="editable-exam-date" data-id="${exam.id}" value="${exam.targetDate}" style="background:transparent; border:none; color:inherit; font-family:inherit; font-size:0.8rem;">
+        <input type="date" class="editable-exam-date" data-id="${escapeHTML(exam.id)}" value="${escapeHTML(exam.targetDate)}" style="background:transparent; border:none; color:inherit; font-family:inherit; font-size:0.8rem;">
         <span class="exam-days tabular-nums">${diffDays > 0 ? diffDays : 0}</span> days
       </div>
       <div class="exam-progress">
@@ -210,16 +220,16 @@ function renderMasterLedger() {
     const sixStemCount = topic.sixStems ? topic.sixStems.filter(Boolean).length : 0;
 
     tr.innerHTML = `
-      <td class="pin-btn" data-id="${topic.id}">${topic.pinned ? '★' : '☆'}</td>
-      <td class="topic-cell" data-id="${topic.id}">
-        <strong>${topic.subject}</strong>: ${topic.topic} ${repairDot}
-        <br><span style="font-size:0.75rem; color:var(--text-secondary)">${topic.examTags.join(', ')}</span>
+      <td class="pin-btn" data-id="${escapeHTML(topic.id)}">${topic.pinned ? '★' : '☆'}</td>
+      <td class="topic-cell" data-id="${escapeHTML(topic.id)}">
+        <strong>${escapeHTML(topic.subject)}</strong>: ${escapeHTML(topic.topic)} ${repairDot}
+        <br><span style="font-size:0.75rem; color:var(--text-secondary)">${escapeHTML(topic.examTags.join(', '))}</span>
       </td>
       ${topic.steps.map((s, idx) => `
-        <td><input type="checkbox" class="step-check" data-id="${topic.id}" data-idx="${idx}" ${s ? 'checked' : ''}></td>
+        <td><input type="checkbox" class="step-check" data-id="${escapeHTML(topic.id)}" data-idx="${idx}" ${s ? 'checked' : ''}></td>
       `).join('')}
       <td>${sixStemCount}/6</td>
-      <td><button class="btn-icon open-dossier" data-id="${topic.id}">🗂️</button></td>
+      <td><button class="btn-icon open-dossier" data-id="${escapeHTML(topic.id)}">🗂️</button></td>
     `;
     tableBody.appendChild(tr);
   });
@@ -268,7 +278,7 @@ function handleStep6Completion(topic, cardElement = null) {
   if (cardElement) {
     cardElement.innerHTML = `
       <div style="padding:1rem; border: 1px solid var(--border-hairline); background: var(--bg-elevated);">
-        <p style="margin-bottom:0.5rem; font-weight:bold;">Step 6 Complete: "${topic.topic}"</p>
+        <p style="margin-bottom:0.5rem; font-weight:bold;">Step 6 Complete: "${escapeHTML(topic.topic)}"</p>
         <button class="btn-primary btn-master-topic" style="margin-right:0.5rem;">[Locked In (Mastered)]</button>
         <button class="btn btn-cooldown-topic">[Needs Another Pass (7d Cooldown)]</button>
       </div>
@@ -367,7 +377,7 @@ function openDossier(id) {
           <div class="failure-item ${log.resolved ? 'resolved' : ''}">
             <label>
               <input type="checkbox" class="resolve-fail-check" data-idx="${idx}" ${log.resolved ? 'checked' : ''}>
-              [${log.cat}] ${log.id} - ${log.note}
+              [${escapeHTML(log.cat)}] ${escapeHTML(log.id)} - ${escapeHTML(log.note)}
             </label>
           </div>
         `).join('')}
@@ -466,7 +476,7 @@ function setupExtraEvents() {
   const examFilter = document.getElementById('filter-exam');
   examFilter.innerHTML = '<option value="All">All Exams</option>';
   STATE.exams.forEach(ex => {
-    examFilter.innerHTML += `<option value="${ex.id}">${ex.name}</option>`;
+    examFilter.innerHTML += `<option value="${escapeHTML(ex.id)}">${escapeHTML(ex.name)}</option>`;
   });
 
   // Attach live filter events
@@ -556,19 +566,19 @@ function renderTodaysDesk() {
     card.innerHTML = `
       <div class="card-header">
         <div>
-          <div class="card-subject">${t.subject}</div>
-          <div class="card-title">${t.topic}</div>
+          <div class="card-subject">${escapeHTML(t.subject)}</div>
+          <div class="card-title">${escapeHTML(t.topic)}</div>
         </div>
-        <button class="btn-icon open-dossier" data-id="${t.id}">🗂️</button>
+        <button class="btn-icon open-dossier" data-id="${escapeHTML(t.id)}">🗂️</button>
       </div>
       ${repairBadge}
       <div class="card-tags">
-        ${t.examTags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}
-        <span class="tag-pill" style="background:var(--bg-elevated); border:1px solid var(--border-hairline)">${t.priority.split(' ')[0]}</span>
+        ${t.examTags.map(tag => `<span class="tag-pill">${escapeHTML(tag)}</span>`).join('')}
+        <span class="tag-pill" style="background:var(--bg-elevated); border:1px solid var(--border-hairline)">${escapeHTML(t.priority.split(' ')[0])}</span>
       </div>
       <div class="card-action">
         ${nextStepIdx !== -1 ? `
-          <input type="checkbox" class="desk-step-check" data-id="${t.id}" data-idx="${nextStepIdx}">
+          <input type="checkbox" class="desk-step-check" data-id="${escapeHTML(t.id)}" data-idx="${nextStepIdx}">
           <label> [ ] ${stepText}</label>
         ` : `<label>All steps complete. Ready for Mastery.</label>`}
       </div>
@@ -630,10 +640,10 @@ function renderFranklinGrid() {
   html += `</tr></thead><tbody>`;
 
   STATE.habits.forEach(habit => {
-    html += `<tr><td class="habit-name">${habit.name}</td>`;
+    html += `<tr><td class="habit-name">${escapeHTML(habit.name)}</td>`;
     weekDates.forEach(dateStr => {
       const isDone = STATE.habitLog[dateStr] && STATE.habitLog[dateStr][habit.id];
-      html += `<td class="habit-dot" data-date="${dateStr}" data-habit="${habit.id}">
+      html += `<td class="habit-dot" data-date="${dateStr}" data-habit="${escapeHTML(habit.id)}">
                  ${isDone ? '●' : '&nbsp;'}
                </td>`;
     });
