@@ -1,5 +1,15 @@
 // js/sync.js — Verified Real-Time Cloud Sync Engine (Google Sheets Web App + GitHub Gist)
 (function (window) {
+  function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   const SYNC_CONFIG_KEY = 'recon_ledger_sync_config_v2';
   const TOMBSTONE_KEY = 'recon_ledger_deleted_ids_v2';
 
@@ -59,11 +69,11 @@
     pill.className = `sync-pill sync-${status}`;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (status === 'synced') {
-      pill.innerHTML = `<span class="sync-dot">●</span> Synced · ${detail || timeStr}`;
+      pill.innerHTML = `<span class="sync-dot">●</span> Synced · ${escapeHTML(detail) || timeStr}`;
     } else if (status === 'syncing') {
-      pill.innerHTML = `<span class="sync-dot">◐</span> Syncing... ${detail}`;
+      pill.innerHTML = `<span class="sync-dot">◐</span> Syncing... ${escapeHTML(detail)}`;
     } else if (status === 'error') {
-      pill.innerHTML = `<span class="sync-dot">✕</span> Sync Failed (${detail})`;
+      pill.innerHTML = `<span class="sync-dot">✕</span> Sync Failed (${escapeHTML(detail)})`;
     } else {
       pill.innerHTML = `<span class="sync-dot">○</span> ${isConfigured() ? 'Ready to Sync' : 'Sync Not Configured'}`;
     }
