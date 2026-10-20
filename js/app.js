@@ -9,6 +9,18 @@ let STATE = {
 };
 
 function initApp() {
+  if (window.location.hash.startsWith('#pair=')) {
+    try {
+      const base64str = window.location.hash.replace('#pair=', '');
+      const configStr = decodeURIComponent(escape(atob(base64str)));
+      localStorage.setItem('cloudSyncConfig', configStr);
+      history.replaceState(null, '', window.location.pathname);
+      if (window.triggerInitialSync) window.triggerInitialSync();
+    } catch (e) {
+      console.error('Error decoding magic link', e);
+    }
+  }
+
   const savedState = localStorage.getItem('reconLedgerState');
   if (savedState) {
     try {
@@ -26,12 +38,13 @@ function initApp() {
 
   setupEventListeners();
   renderApp();
-
 }
 
 function saveState() {
   localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
-  }
+  // Call debounced sync if sync logic is hooked up
+  if (window.triggerAutoSync) window.triggerAutoSync();
+}
 
 function updateItemTimestamp(item) {
   if (item) item.updatedAt = Date.now();
@@ -826,6 +839,7 @@ setupEventListeners = function() {
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 
+
 });
 
 
@@ -885,50 +899,50 @@ function handleJSONMerge(importedState) {
 }
 
 function handleCSVMerge(csvStr) {
-  // Try tab first, then fallback to pipe or comma
-  let delim = '\t';
-  if (csvStr.includes('\t')) delim = '\t';
-  else if (csvStr.includes('|')) delim = '|';
-  else if (csvStr.includes(',')) delim = ',';
+      // Try tab first, then fallback to pipe or comma
+      let delim = '\t';
+      if (csvStr.includes('\t')) delim = '\t';
+      else if (csvStr.includes('|')) delim = '|';
+      else if (csvStr.includes(',')) delim = ',';
 
-  const lines = csvStr.split('\n');
-  if (lines.length < 2) return; // Need header + data
-  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase());
+      const lines = csvStr.split('\n');
+      if (lines.length < 2) return; // Need header + data
+      const headers = lines[0].split(delim).map(h => h.trim().toLowerCase());
 
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const cols = lines[i].split(delim);
-    let incoming = { subject: "Uncategorized", topic: "", priority: "Layer C (Compression)", examTags: [], dossierNotes: "", steps: [false,false,false,false,false,false] };
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(delim);
+        let incoming = { subject: "Uncategorized", topic: "", priority: "Layer C (Compression)", examTags: [], dossierNotes: "", steps: [false,false,false,false,false,false] };
 
-    let archTemplate = "";
-    let masteryTarget = "";
+        let archTemplate = "";
+        let masteryTarget = "";
 
-    headers.forEach((h, idx) => {
-      const val = (cols[idx] || '').trim();
-      if (h.includes('subject')) incoming.subject = val;
-      if (h.includes('topic')) incoming.topic = val;
-      if (h.includes('priority')) incoming.priority = val;
-      if (h.includes('exam') || h.includes('tags')) incoming.examTags = val.split(',').map(s=>s.trim()).filter(Boolean);
-      if (h.includes('notes') || h.includes('target') || h.includes('chain')) masteryTarget = val;
-      if (h.includes('arch')) archTemplate = val;
+        headers.forEach((h, idx) => {
+          const val = (cols[idx] || '').trim();
+          if (h.includes('subject')) incoming.subject = val;
+          if (h.includes('topic')) incoming.topic = val;
+          if (h.includes('priority')) incoming.priority = val;
+          if (h.includes('exam') || h.includes('tags')) incoming.examTags = val.split(',').map(s=>s.trim()).filter(Boolean);
+          if (h.includes('notes') || h.includes('target') || h.includes('chain')) masteryTarget = val;
+          if (h.includes('arch')) archTemplate = val;
 
-      if (h === '1_deepen' || h === '1') incoming.steps[0] = val.toUpperCase() === 'TRUE';
-      if (h === '2_every_pyq' || h === '2') incoming.steps[1] = val.toUpperCase() === 'TRUE';
-      if (h === '3_failure_map' || h === '3') incoming.steps[2] = val.toUpperCase() === 'TRUE';
-      if (h === '4_blindspot_map' || h === '4') incoming.steps[3] = val.toUpperCase() === 'TRUE';
-      if (h === '5_qgen_table' || h === '5') incoming.steps[4] = val.toUpperCase() === 'TRUE';
-      if (h === '6_practice_cycle' || h === '6') incoming.steps[5] = val.toUpperCase() === 'TRUE';
-    });
+          if (h === '1_deepen' || h === '1') incoming.steps[0] = val.toUpperCase() === 'TRUE';
+          if (h === '2_every_pyq' || h === '2') incoming.steps[1] = val.toUpperCase() === 'TRUE';
+          if (h === '3_failure_map' || h === '3') incoming.steps[2] = val.toUpperCase() === 'TRUE';
+          if (h === '4_blindspot_map' || h === '4') incoming.steps[3] = val.toUpperCase() === 'TRUE';
+          if (h === '5_qgen_table' || h === '5') incoming.steps[4] = val.toUpperCase() === 'TRUE';
+          if (h === '6_practice_cycle' || h === '6') incoming.steps[5] = val.toUpperCase() === 'TRUE';
+        });
 
-    if (archTemplate || masteryTarget) {
-       incoming.dossierNotes = "";
-       if (archTemplate) incoming.dossierNotes += `### ${archTemplate.replace('Arch', 'Architecture')}\n`;
-       if (masteryTarget) incoming.dossierNotes += masteryTarget;
+        if (archTemplate || masteryTarget) {
+           incoming.dossierNotes = "";
+           if (archTemplate) incoming.dossierNotes += `### ${archTemplate.replace('Arch', 'Architecture')}\n`;
+           if (masteryTarget) incoming.dossierNotes += masteryTarget;
+        }
+
+        if (incoming.topic) mergeSingleTopic(incoming);
+      }
     }
-
-    if (incoming.topic) mergeSingleTopic(incoming);
-  }
-}
 
 function mergeSingleTopic(incoming) {
   const keyMatch = t => t.subject.toLowerCase() === incoming.subject.toLowerCase() && t.topic.toLowerCase() === incoming.topic.toLowerCase();
@@ -966,13 +980,13 @@ function mergeSingleTopic(incoming) {
 }
 
 function downloadFile(content, filename, contentType) {
-  const blob = new Blob([content], { type: contentType }
-);
+  const blob = new Blob([content], { type: contentType });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
 }
+
 
 
 
