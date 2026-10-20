@@ -21,8 +21,9 @@
       <div class="controls-section">
         <select id="campaign-phase-selector" class="phase-selector"></select>
         <button id="theme-toggle" class="btn-icon" title="Toggle Day/Night">🌗</button>
-        <button id="smart-merge-btn" class="btn" title="Smart Merge Import/Export">⎘ Merge Data</button>
-        <button id="github-sync-btn" class="btn" title="Cloud Sync Status">☁️ <span id="sync-status">Offline</span></button>
+        <button id="btn-copy-tsv" class="btn" title="Copy Table for Google Sheets">[📋 Copy Table for Google Sheets (TSV)]</button>
+        <button id="smart-merge-btn" class="btn" title="Smart Merge Import/Export">[📥 Paste / Import Rows (Smart Merge)]</button>
+
       </div>
     </div>
 
@@ -88,17 +89,46 @@
       </div>
     </div>
 
-    <div class="quick-add-bar">
-      <input type="text" id="add-subject" placeholder="Subject">
-      <input type="text" id="add-topic" placeholder="Topic name">
-      <select id="add-priority">
-        <option value="Layer A (Deep Mastery)">Layer A</option>
-        <option value="Layer B (Strong App)">Layer B</option>
-        <option value="Layer C (Compression)">Layer C</option>
-        <option value="Layer D (Maintenance)">Layer D</option>
-      </select>
-      <!-- tags to be added via UI modal or multiple select -->
-      <button id="btn-quick-add" class="btn-primary">Add Topic</button>
+
+    <div class="quick-add-bar" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: var(--bg-elevated); border: 1px solid var(--border-hairline); border-radius: 4px; margin-bottom: 1rem;">
+      <!-- Mode A: Shorthand -->
+      <div style="display: flex; gap: 0.5rem; width: 100%;">
+        <input type="text" id="shorthand-input" placeholder="Subject :: Topic Name #Arch1 @TIFR,GATE-BT !LayerA" style="flex: 1; padding: 0.5rem; font-family: monospace; font-size: 0.9rem; border: 1px solid var(--border-hairline); background: var(--bg-subtle); color: var(--text-primary);">
+      </div>
+
+      <!-- Mode B: Visual Builder -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; width: 100%; align-items: center;">
+        <input type="text" id="add-subject" placeholder="Subject" list="subject-list" style="width: 150px; padding: 0.5rem;">
+        <datalist id="subject-list"></datalist>
+
+        <input type="text" id="add-topic" placeholder="Topic name" style="flex: 1; min-width: 200px; padding: 0.5rem;">
+
+        <select id="add-architecture" style="padding: 0.5rem;">
+          <option value="">No Architecture</option>
+          <option value="Arch 1: Mechanistic Spine">Arch 1: Mechanistic Spine</option>
+          <option value="Arch 2: Quantitative Engine">Arch 2: Quantitative Engine</option>
+          <option value="Arch 3: Principle-to-Signal">Arch 3: Principle-to-Signal</option>
+          <option value="Arch 4: Rapid Compression">Arch 4: Rapid Compression</option>
+          <option value="Arch 5: Foundation 4/10">Arch 5: Foundation 4/10</option>
+        </select>
+
+        <select id="add-priority" style="padding: 0.5rem;">
+          <option value="Layer A (Deep Mastery)">Layer A</option>
+          <option value="Layer B (Strong App)">Layer B</option>
+          <option value="Layer C (Compression)">Layer C</option>
+          <option value="Layer D (Maintenance)">Layer D</option>
+        </select>
+
+        <div id="add-exam-tags-container" style="display:flex; gap:0.25rem;">
+          <label><input type="checkbox" value="TIFR" checked> TIFR</label>
+          <label><input type="checkbox" value="GATE-BT" checked> GATE-BT</label>
+          <label><input type="checkbox" value="GATE-XL" checked> GATE-XL</label>
+          <label><input type="checkbox" value="JAM" checked> JAM</label>
+          <label><input type="checkbox" value="ENDSEM"> ENDSEM</label>
+        </div>
+
+        <button id="btn-quick-add" class="btn-primary" style="padding: 0.5rem 1rem;">+ Add Topic & Pre-Fill</button>
+      </div>
     </div>
 
     <div class="table-container">
@@ -150,59 +180,7 @@
     </div>
   </div>
 
-  <!-- Cloud Sync Modal -->
-  <div id="github-sync-modal" class="modal hidden">
-    <div class="modal-content" style="width:600px;">
-      <div class="modal-header">
-        <h2>Cloud Sync & Pairing</h2>
-        <button id="close-sync-modal" class="btn-icon">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="sync-tabs" style="display:flex; gap:1rem; margin-bottom:1rem; border-bottom:1px solid var(--border-hairline);">
-          <button id="tab-sheets" class="btn-text active" style="font-weight:bold;">Option A: Google Sheets</button>
-          <button id="tab-gist" class="btn-text">Option B: GitHub Gist</button>
-        </div>
-
-        <!-- Google Sheets Pane -->
-        <div id="pane-sheets" class="sync-pane">
-          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">Fastest CORS-safe sync. Zero token setup.</p>
-          <label style="display:block; margin-bottom:0.5rem;">Web App URL:<br> <input type="text" id="gs-url" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; padding:0.4rem; background:var(--bg-subtle); border:1px solid var(--border-hairline); color:var(--text-primary);"></label>
-          <label style="display:block; margin-bottom:1rem;">PIN (Optional):<br> <input type="password" id="gs-pin" placeholder="Enter PIN" style="width:100%; padding:0.4rem; background:var(--bg-subtle); border:1px solid var(--border-hairline); color:var(--text-primary);"></label>
-          <div class="modal-actions">
-            <button id="btn-gs-save" class="btn-primary">Save Sheets Config</button>
-            <button id="btn-gs-copy-code" class="btn">Copy Apps Script Code</button>
-          </div>
-        </div>
-
-        <!-- GitHub Gist Pane -->
-        <div id="pane-gist" class="sync-pane hidden">
-          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">Uses fine-grained PAT (gist scope only).</p>
-          <label style="display:block; margin-bottom:0.5rem;">PAT:<br> <input type="password" id="gh-pat" placeholder="github_pat_..." style="width:100%; padding:0.4rem; background:var(--bg-subtle); border:1px solid var(--border-hairline); color:var(--text-primary);"></label>
-          <label style="display:block; margin-bottom:1rem;">Gist ID:<br> <input type="text" id="gh-gist-id" placeholder="Leave empty to create new" style="width:100%; padding:0.4rem; background:var(--bg-subtle); border:1px solid var(--border-hairline); color:var(--text-primary);"></label>
-          <div class="modal-actions">
-            <button id="btn-gh-save" class="btn-primary">Save Gist Config</button>
-            <button id="btn-gh-create" class="btn">Create New Secret Gist</button>
-          </div>
-        </div>
-
-        <!-- QR Pairing Section -->
-        <div id="pairing-section" class="hidden" style="margin-top:2rem; padding-top:1rem; border-top:1px dashed var(--border-hairline); display:flex; align-items:center; gap:1.5rem;">
-          <div>
-            <h3 style="font-size:1.1rem; margin-bottom:0.5rem;">Pair Phone / Tablet</h3>
-            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Scan QR code or use the magic link to sync instantly.</p>
-            <button id="btn-copy-magic-link" class="btn">Copy Magic Pairing Link</button>
-          </div>
-          <div id="qr-container" style="background:white; padding:10px; border-radius:4px; min-width:180px; min-height:180px; display:flex; justify-content:center; align-items:center;">
-             <span style="color:var(--text-secondary); font-size:0.8rem;">Loading QR...</span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
   <script src="js/seed-data.js"></script>
-  <script src="js/sync.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -9,18 +9,6 @@ let STATE = {
 };
 
 function initApp() {
-  if (window.location.hash.startsWith('#pair=')) {
-    try {
-      const base64str = window.location.hash.replace('#pair=', '');
-      const configStr = decodeURIComponent(escape(atob(base64str)));
-      localStorage.setItem('cloudSyncConfig', configStr);
-      history.replaceState(null, '', window.location.pathname);
-      if (window.triggerInitialSync) window.triggerInitialSync();
-    } catch (e) {
-      console.error('Error decoding magic link', e);
-    }
-  }
-
   const savedState = localStorage.getItem('reconLedgerState');
   if (savedState) {
     try {
@@ -38,13 +26,12 @@ function initApp() {
 
   setupEventListeners();
   renderApp();
+
 }
 
 function saveState() {
   localStorage.setItem('reconLedgerState', JSON.stringify(STATE));
-  // Call debounced sync if sync logic is hooked up
-  if (window.triggerAutoSync) window.triggerAutoSync();
-}
+  }
 
 function updateItemTimestamp(item) {
   if (item) item.updatedAt = Date.now();
@@ -331,11 +318,26 @@ function openDossier(id) {
   else if(sixStemCount >= 4) verdict = '4-5/6: Unstable (Repair Missed Operations)';
 
   body.innerHTML = `
+
     <div class="dossier-section">
-      <label>Notes & Target Map:</label>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+        <label>Notes & Target Map:</label>
+        <div>
+          <select id="dossier-arch-select" style="font-size:0.75rem; padding:0.2rem;">
+            <option value="">Select Architecture...</option>
+            <option value="Arch 1: Mechanistic Spine">Arch 1: Mechanistic Spine</option>
+            <option value="Arch 2: Quantitative Engine">Arch 2: Quantitative Engine</option>
+            <option value="Arch 3: Principle-to-Signal">Arch 3: Principle-to-Signal</option>
+            <option value="Arch 4: Rapid Compression">Arch 4: Rapid Compression</option>
+            <option value="Arch 5: Foundation 4/10">Arch 5: Foundation 4/10</option>
+          </select>
+          <button id="btn-load-arch" class="btn" style="font-size:0.75rem; padding:0.2rem 0.5rem;">[Load Architecture Template]</button>
+        </div>
+      </div>
       <textarea id="dossier-notes-input" rows="6">${topic.dossierNotes}</textarea>
       <span id="save-indicator" style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 10px;"></span>
     </div>
+
 
     <div class="dossier-section">
       <h3>Six-Stem Mastery Test</h3>
@@ -377,6 +379,24 @@ function openDossier(id) {
   drawer.classList.remove('hidden');
 
   let saveTimeout;
+
+  document.getElementById('btn-load-arch').addEventListener('click', () => {
+    const arch = document.getElementById('dossier-arch-select').value;
+    if (!arch) return alert("Select an architecture first.");
+    const template = getArchitectureTemplate(arch);
+    const textarea = document.getElementById('dossier-notes-input');
+    if (textarea.value.trim() && !confirm("This will append the template to your existing notes. Continue?")) return;
+
+    textarea.value = (textarea.value + "\n\n" + template).trim();
+
+    // Trigger save
+    topic.dossierNotes = textarea.value;
+    updateItemTimestamp(topic);
+    saveState();
+    document.getElementById('save-indicator').textContent = 'Saved';
+    setTimeout(() => document.getElementById('save-indicator').textContent = '', 2000);
+  });
+
   document.getElementById('dossier-notes-input').addEventListener('input', (e) => {
     clearTimeout(saveTimeout);
     document.getElementById('save-indicator').textContent = 'Saving...';
@@ -425,27 +445,59 @@ function openDossier(id) {
   });
 }
 
-function setupExtraEvents() {
-  document.getElementById('close-dossier').addEventListener('click', () => {
-    document.getElementById('dossier-drawer').classList.add('hidden');
-    currentDossierTopicId = null;
-  });
 
-  document.getElementById('btn-quick-add').addEventListener('click', () => {
-    const subject = document.getElementById('add-subject').value;
-    const tName = document.getElementById('add-topic').value;
-    const prio = document.getElementById('add-priority').value;
-    if(!subject || !tName) return alert("Subject and Topic required");
+function getArchitectureTemplate(arch) {
+  if (arch === "Arch 1: Mechanistic Spine") return `### Architecture 1: Deep Mechanistic Spine
+- **Connected Chain / Decision Tree:** [Step 1 -> Step 2 -> Regulation/Point of Control -> Output]
+- **PYQ Signal & Recurrent Stems:**
+- **Perturbation / Mutant Scenarios (What happens if X is knocked out/inhibited?):**
+- **Blind-Spot & High-Probability Traps:**
+- **90-Min Session Check:** [ ] 10m Cold Retrieval [ ] 20m Mechanism [ ] 30m PYQs [ ] 15m Transformation [ ] 10m Failure Log [ ] 5m Anki (2 cards)
+`;
+  if (arch === "Arch 2: Quantitative Engine") return `### Architecture 2: Quantitative & Numerical Engine
+- **Core Variable Chain:** [Input Variable -> Formula -> Conversion -> Output Unit]
+- **Top 6 Canonical Calculation Stems (<3 min/stem target):**
+  1.
+  2.
+  3.
+  4.
+  5.
+  6.
+- **Unit & Conceptual Traps (e.g., rate vs time, dilution direction):**
+- **MITs:** [ ] All historical NATs [ ] Mixed numerical set [ ] Blind-solve 6 canonical stems
+`;
+  if (arch === "Arch 3: Principle-to-Signal") return `### Architecture 3: Principle-to-Signal & Experimental Phenotype
+- **Method/Structure Chain:** [Sample/Structure -> Principle/Composition -> Signal/Location -> Function -> Experimental Output/Phenotype]
+- **Graph / Blot / Titre Curve Interpretation Rules:**
+- **False-Positive / Control / Artifact Traps:**
+`;
+  if (arch === "Arch 4: Rapid Compression") return `### Architecture 4: High-Return Compression Lookup
+| Entity / Drug / Organism | Defining Feature / Target | Mechanism / Marker | Trap / Exception |
+| :--- | :--- | :--- | :--- |
+|  |  |  |  |
+- **20-Min Closed-Book Recall Drill:** [ ] Pass 1 [ ] Pass 2 [ ] Pass 3
+`;
+  if (arch === "Arch 5: Foundation 4/10") return `### Architecture 5: Operational 4/10 Foundation Pass
+- **Core Concept:**
+- **Fundamental Equation(s):**
+- **Physical / Chemical Interpretation:**
+- **Standard Problem Archetypes:**
+- **Weekly Retrieval Check:** [ ] Week 1 [ ] Week 2 [ ] Week 3
+`;
+  return "";
+}
 
+function createTopic(subject, topic, priority, tags, arch) {
+    let notes = getArchitectureTemplate(arch);
     const newTopic = {
       id: 't' + Date.now(),
-      subject,
-      topic: tName,
-      priority: prio,
+      subject: subject,
+      topic: topic,
+      priority: priority,
       pyqWeight: 0,
-      examTags: [],
+      examTags: tags,
       pinned: false,
-      dossierNotes: "",
+      dossierNotes: notes,
       steps: [false,false,false,false,false,false],
       sixStems: [false,false,false,false,false,false],
       failureLog: [],
@@ -454,12 +506,94 @@ function setupExtraEvents() {
       updatedAt: Date.now()
     };
     STATE.topics.push(newTopic);
-
-    document.getElementById('add-subject').value = '';
-    document.getElementById('add-topic').value = '';
     saveState();
     renderApp();
+}
+
+function setupExtraEvents() {
+  document.getElementById('close-dossier').addEventListener('click', () => {
+    document.getElementById('dossier-drawer').classList.add('hidden');
+    currentDossierTopicId = null;
   });
+
+
+  const shorthandInput = document.getElementById('shorthand-input');
+
+  if (shorthandInput) {
+    shorthandInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = shorthandInput.value.trim();
+        if (!val) return;
+
+        let subject = "General";
+        let topic = "";
+        let tags = ["TIFR", "GATE-BT", "GATE-XL", "JAM"];
+        let priority = "Layer C (Compression)";
+        let arch = "";
+
+        // 1. Tags
+        const tagMatch = val.match(/@([\w\-,\s]+)/);
+        if (tagMatch) {
+           tags = tagMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
+        }
+
+        // 2. Priority
+        if (val.includes('!LayerA')) priority = "Layer A (Deep Mastery)";
+        if (val.includes('!LayerB')) priority = "Layer B (Strong App)";
+        if (val.includes('!LayerC')) priority = "Layer C (Compression)";
+        if (val.includes('!LayerD')) priority = "Layer D (Maintenance)";
+
+        // 3. Arch
+        if (val.includes('#Arch1')) arch = "Arch 1: Mechanistic Spine";
+        if (val.includes('#Arch2')) arch = "Arch 2: Quantitative Engine";
+        if (val.includes('#Arch3')) arch = "Arch 3: Principle-to-Signal";
+        if (val.includes('#Arch4')) arch = "Arch 4: Rapid Compression";
+        if (val.includes('#Arch5')) arch = "Arch 5: Foundation 4/10";
+
+        // 4. Subject and Topic
+        let coreText = val.replace(/@[\w\-,\s]+/, '').replace(/!Layer[ABCD]/, '').replace(/#Arch[1-5]/, '').trim();
+
+        if (coreText.includes('::')) {
+           const parts = coreText.split('::');
+           subject = parts[0].trim();
+           topic = parts[1].trim();
+        } else {
+           topic = coreText;
+        }
+
+        if (!topic) return alert("Topic name required.");
+
+        createTopic(subject, topic, priority, tags, arch);
+        shorthandInput.value = '';
+      }
+    });
+  }
+
+  const subjectList = document.getElementById('subject-list');
+  if (subjectList) {
+    const subjects = [...new Set(STATE.topics.map(t => t.subject))];
+    subjectList.innerHTML = subjects.map(s => `<option value="${s}">`).join('');
+  }
+
+  const bqa = document.getElementById('btn-quick-add');
+  if (bqa) {
+    bqa.addEventListener('click', () => {
+      const subject = document.getElementById('add-subject').value || "General";
+      const topic = document.getElementById('add-topic').value;
+      const prio = document.getElementById('add-priority').value;
+      const arch = document.getElementById('add-architecture').value;
+
+      const tagChecks = document.querySelectorAll('#add-exam-tags-container input[type="checkbox"]:checked');
+      const tags = Array.from(tagChecks).map(chk => chk.value);
+
+      if (!topic) return alert("Topic name required.");
+      createTopic(subject, topic, prio, tags, arch);
+
+      document.getElementById('add-subject').value = '';
+      document.getElementById('add-topic').value = '';
+    });
+  }
+
 
   // Populate filter exams
   const examFilter = document.getElementById('filter-exam');
@@ -686,28 +820,191 @@ const originalSetup = setupEventListeners;
 setupEventListeners = function() {
   originalSetup();
   setupExtraEvents();
+  setupMergeEvents();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 
-  // Set up visibility and focus sync triggers
-  let lastPull = 0;
-  function throttledPull() {
-    const now = Date.now();
-    if (now - lastPull > 3000) { // 3-second throttle to prevent rapid tab-switch API spam
-      lastPull = now;
-      if (window.triggerPullSync) window.triggerPullSync();
-    }
-  }
+});
 
-  window.addEventListener('focus', throttledPull);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      throttledPull();
+
+function setupMergeEvents() {
+  const modal = document.getElementById('smart-merge-modal');
+  const btnOpen = document.getElementById('smart-merge-btn');
+  const btnClose = document.getElementById('close-merge-modal');
+  const btnImport = document.getElementById('btn-import-merge');
+  const btnExportCsv = document.getElementById('btn-export-csv');
+  const btnExportJson = document.getElementById('btn-export-json');
+  const inputArea = document.getElementById('merge-data-input');
+
+  if(btnOpen) btnOpen.addEventListener('click', () => modal.classList.remove('hidden'));
+  if(btnClose) btnClose.addEventListener('click', () => modal.classList.add('hidden'));
+
+  if(btnImport) btnImport.addEventListener('click', () => {
+    const dataStr = inputArea.value.trim();
+    if (!dataStr) return;
+
+    try {
+      if (dataStr.startsWith('{') || dataStr.startsWith('[')) {
+        handleJSONMerge(JSON.parse(dataStr));
+      } else {
+        handleCSVMerge(dataStr);
+      }
+      saveState();
+      renderApp();
+      alert('Merge Import Successful');
+      modal.classList.add('hidden');
+      inputArea.value = '';
+    } catch (e) {
+      alert('Error parsing data: ' + e.message);
     }
   });
-  window.addEventListener('online', () => {
-    if (window.triggerAutoSync) window.triggerAutoSync();
+
+  if(btnExportCsv) btnExportCsv.addEventListener('click', () => {
+    let csv = "Subject|Topic|Priority|ExamTags|DossierNotes\n";
+    STATE.topics.forEach(t => {
+      // Escape pipes in notes if any
+      const safeNotes = (t.dossierNotes || '').replace(/\|/g, '-');
+      csv += `${t.subject}|${t.topic}|${t.priority}|${t.examTags.join(',')}|${safeNotes}\n`;
+    });
+    downloadFile(csv, 'recon-ledger-export.csv', 'text/csv');
   });
+
+  if(btnExportJson) btnExportJson.addEventListener('click', () => {
+    downloadFile(JSON.stringify(STATE, null, 2), 'recon-ledger-state.json', 'application/json');
+  });
+}
+
+function handleJSONMerge(importedState) {
+  if (importedState.topics && Array.isArray(importedState.topics)) {
+    importedState.topics.forEach(incoming => {
+      mergeSingleTopic(incoming);
+    });
+  }
+}
+
+function handleCSVMerge(csvStr) {
+  // Try tab first, then fallback to pipe or comma
+  let delim = '\t';
+  if (csvStr.includes('\t')) delim = '\t';
+  else if (csvStr.includes('|')) delim = '|';
+  else if (csvStr.includes(',')) delim = ',';
+
+  const lines = csvStr.split('\n');
+  if (lines.length < 2) return; // Need header + data
+  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase());
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols = lines[i].split(delim);
+    let incoming = { subject: "Uncategorized", topic: "", priority: "Layer C (Compression)", examTags: [], dossierNotes: "", steps: [false,false,false,false,false,false] };
+
+    let archTemplate = "";
+    let masteryTarget = "";
+
+    headers.forEach((h, idx) => {
+      const val = (cols[idx] || '').trim();
+      if (h.includes('subject')) incoming.subject = val;
+      if (h.includes('topic')) incoming.topic = val;
+      if (h.includes('priority')) incoming.priority = val;
+      if (h.includes('exam') || h.includes('tags')) incoming.examTags = val.split(',').map(s=>s.trim()).filter(Boolean);
+      if (h.includes('notes') || h.includes('target') || h.includes('chain')) masteryTarget = val;
+      if (h.includes('arch')) archTemplate = val;
+
+      if (h === '1_deepen' || h === '1') incoming.steps[0] = val.toUpperCase() === 'TRUE';
+      if (h === '2_every_pyq' || h === '2') incoming.steps[1] = val.toUpperCase() === 'TRUE';
+      if (h === '3_failure_map' || h === '3') incoming.steps[2] = val.toUpperCase() === 'TRUE';
+      if (h === '4_blindspot_map' || h === '4') incoming.steps[3] = val.toUpperCase() === 'TRUE';
+      if (h === '5_qgen_table' || h === '5') incoming.steps[4] = val.toUpperCase() === 'TRUE';
+      if (h === '6_practice_cycle' || h === '6') incoming.steps[5] = val.toUpperCase() === 'TRUE';
+    });
+
+    if (archTemplate || masteryTarget) {
+       incoming.dossierNotes = "";
+       if (archTemplate) incoming.dossierNotes += `### ${archTemplate.replace('Arch', 'Architecture')}\n`;
+       if (masteryTarget) incoming.dossierNotes += masteryTarget;
+    }
+
+    if (incoming.topic) mergeSingleTopic(incoming);
+  }
+}
+
+function mergeSingleTopic(incoming) {
+  const keyMatch = t => t.subject.toLowerCase() === incoming.subject.toLowerCase() && t.topic.toLowerCase() === incoming.topic.toLowerCase();
+  let existing = STATE.topics.find(keyMatch);
+
+  if (existing) {
+    // Non-destructive update
+    if (incoming.priority) existing.priority = incoming.priority;
+    if (incoming.examTags) {
+      incoming.examTags.forEach(tag => {
+        if (!existing.examTags.includes(tag)) existing.examTags.push(tag);
+      });
+    }
+    if (incoming.dossierNotes && !existing.dossierNotes.includes(incoming.dossierNotes)) {
+      existing.dossierNotes += `\n${incoming.dossierNotes}`;
+    }
+  } else {
+    // New topic
+    STATE.topics.push({
+      id: 't' + Date.now() + Math.floor(Math.random()*1000),
+      subject: incoming.subject,
+      topic: incoming.topic,
+      priority: incoming.priority || "Layer C (Compression)",
+      pyqWeight: incoming.pyqWeight || 0,
+      examTags: incoming.examTags || [],
+      pinned: false,
+      dossierNotes: incoming.dossierNotes || "",
+      steps: [false,false,false,false,false,false],
+      sixStems: [false,false,false,false,false,false],
+      failureLog: [],
+      cooldownUntil: null,
+      status: "In Progress"
+    });
+  }
+}
+
+function downloadFile(content, filename, contentType) {
+  const blob = new Blob([content], { type: contentType }
+);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+
+
+function generateTSV() {
+  let tsv = "Lane / Subject\tTopic / Unit\tBaseline Architecture\tPriority Tier\tExam Tags\t1_Deepen\t2_Every_PYQ\t3_Failure_Map\t4_BlindSpot_Map\t5_QGen_Table\t6_Practice_Cycle\tCore Chain & Mastery Target\n";
+  STATE.topics.forEach(t => {
+    const archMatch = t.dossierNotes.match(/### Architecture (\d): ([^\n]+)/);
+    const archStr = archMatch ? `Arch ${archMatch[1]}: ${archMatch[2].trim()}` : "None";
+
+    // Extract everything after the architecture header as the core chain/mastery target
+    let targetStr = "";
+    if (archMatch) {
+       targetStr = t.dossierNotes.substring(t.dossierNotes.indexOf("\n", archMatch.index) + 1).replace(/[\n\t]/g, " ").trim();
+    } else {
+       targetStr = t.dossierNotes.replace(/[\n\t]/g, " ").trim();
+    }
+
+    const tags = t.examTags.join(", ");
+
+    tsv += `${t.subject}\t${t.topic}\t${archStr}\t${t.priority}\t${tags}\t${t.steps[0] ? "TRUE" : "FALSE"}\t${t.steps[1] ? "TRUE" : "FALSE"}\t${t.steps[2] ? "TRUE" : "FALSE"}\t${t.steps[3] ? "TRUE" : "FALSE"}\t${t.steps[4] ? "TRUE" : "FALSE"}\t${t.steps[5] ? "TRUE" : "FALSE"}\t${targetStr}\n`;
+  });
+  return tsv;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCopyTsv = document.getElementById('btn-copy-tsv');
+  if (btnCopyTsv) {
+    btnCopyTsv.addEventListener('click', () => {
+      const tsv = generateTSV();
+      navigator.clipboard.writeText(tsv).then(() => {
+        alert("Copied to clipboard. You can now paste directly into A1 of Google Sheets!");
+      });
+    });
+  }
 });
